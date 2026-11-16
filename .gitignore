@@ -1,0 +1,80 @@
+
+# =====================================
+# Environment variables and secrets
+# =====================================
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# =====================================
+# INI configuration files
+# =====================================
+*.ini
+**/*.ini
+
+# =====================================
+# Python / FastAPI
+# =====================================
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# =====================================
+# Next.js / Node.js
+# =====================================
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# =====================================
+# Database exports
+# =====================================
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+*.dump
+*.backup
+
+# =====================================
+# Credentials and private keys
+# =====================================
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+
+# =====================================
+# IDE / operating system
+# =====================================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# =====================================
+# Logs and temporary files
+# =====================================
+*.log
+*.tmp
+*.bak
