@@ -9,6 +9,7 @@ import {
   getCandidateAssessments,
   getMySubmissions,
   uploadCandidateProject,
+  startInterview,
   type CandidateAssessment,
   type CandidateSubmission,
   type User,
@@ -35,6 +36,10 @@ export default function CandidateDashboard() {
 
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+
+  const [startingInterviewId, setStartingInterviewId] =
+    useState<string | null>(null);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -142,9 +147,7 @@ export default function CandidateDashboard() {
         selectedFile
       );
 
-      const updatedSubmissions = await getMySubmissions(
-        token
-      );
+      const updatedSubmissions = await getMySubmissions(token);
 
       setSubmissions(updatedSubmissions);
 
@@ -167,6 +170,38 @@ export default function CandidateDashboard() {
       );
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function handleStartInterview(submissionId: string) {
+    const token = sessionStorage.getItem("access_token");
+
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    setStartingInterviewId(submissionId);
+    setError("");
+    setSuccess("");
+
+    try {
+      const interview = await startInterview(
+        token,
+        submissionId
+      );
+
+      router.push(
+        `/interview/${encodeURIComponent(interview.session_id)}`
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not start interview."
+      );
+    } finally {
+      setStartingInterviewId(null);
     }
   }
 
@@ -198,6 +233,7 @@ export default function CandidateDashboard() {
           </div>
 
           <button
+            type="button"
             onClick={handleLogout}
             className="rounded-lg border px-4 py-2 hover:bg-gray-100"
           >
@@ -223,6 +259,7 @@ export default function CandidateDashboard() {
           </p>
         )}
 
+        {/* Upload Project */}
         <section className="rounded-xl border bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-xl font-semibold">
             Upload Your Project
@@ -254,9 +291,8 @@ export default function CandidateDashboard() {
                 </option>
 
                 {assessments.map((assessment) => {
-                  const submitted = submittedAssessmentIds.has(
-                    assessment.id
-                  );
+                  const submitted =
+                    submittedAssessmentIds.has(assessment.id);
 
                   return (
                     <option
@@ -265,7 +301,9 @@ export default function CandidateDashboard() {
                       disabled={submitted}
                     >
                       {assessment.title} — {assessment.role}
-                      {submitted ? " (Already Submitted)" : ""}
+                      {submitted
+                        ? " (Already Submitted)"
+                        : ""}
                     </option>
                   );
                 })}
@@ -317,6 +355,7 @@ export default function CandidateDashboard() {
           </form>
         </section>
 
+        {/* Available Assessments */}
         <section>
           <h2 className="mb-4 text-xl font-semibold">
             Available Assessments
@@ -329,9 +368,8 @@ export default function CandidateDashboard() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {assessments.map((assessment) => {
-                const submitted = submittedAssessmentIds.has(
-                  assessment.id
-                );
+                const submitted =
+                  submittedAssessmentIds.has(assessment.id);
 
                 return (
                   <div
@@ -377,6 +415,7 @@ export default function CandidateDashboard() {
           )}
         </section>
 
+        {/* My Submissions */}
         <section>
           <h2 className="mb-4 text-xl font-semibold">
             My Submissions
@@ -422,6 +461,20 @@ export default function CandidateDashboard() {
                         submission.created_at
                       ).toLocaleString()}
                     </p>
+
+                    {/* Start / Resume Interview */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleStartInterview(submission.id)
+                      }
+                      disabled={startingInterviewId !== null}
+                      className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {startingInterviewId === submission.id
+                        ? "Opening Interview..."
+                        : "Start / Resume Interview"}
+                    </button>
                   </div>
                 );
               })}

@@ -244,3 +244,123 @@ export async function uploadCandidateProject(
 
   return response.json();
 }
+
+
+export type InterviewQuestion = {
+  id: string;
+  question: string;
+  category: string;
+  difficulty: string;
+  position: number;
+  answer?: string | null;
+};
+
+export type InterviewSession = {
+  session_id: string;
+  submission_id?: string;
+  status: "in_progress" | "completed";
+  questions: InterviewQuestion[];
+};
+
+export async function startInterview(
+  token: string,
+  submissionId: string
+): Promise<InterviewSession> {
+  const response = await fetch(`${API_URL}/interviews/start`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ submission_id: submissionId }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(
+      typeof data?.detail === "string"
+        ? data.detail
+        : `Could not start interview (${response.status}).`
+    );
+  }
+
+  return response.json();
+}
+
+export async function getInterview(
+  token: string,
+  sessionId: string
+): Promise<InterviewSession> {
+  const response = await fetch(
+    `${API_URL}/interviews/${encodeURIComponent(sessionId)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Could not load interview (${response.status}).`
+    );
+  }
+
+  return response.json();
+}
+
+export async function saveInterviewAnswer(
+  token: string,
+  sessionId: string,
+  questionId: string,
+  answerText: string
+): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/interviews/${encodeURIComponent(sessionId)}/answers`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        question_id: questionId,
+        answer_text: answerText,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(
+      typeof data?.detail === "string"
+        ? data.detail
+        : `Could not save answer (${response.status}).`
+    );
+  }
+}
+
+export async function completeInterview(
+  token: string,
+  sessionId: string
+): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/interviews/${encodeURIComponent(sessionId)}/complete`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(
+      typeof data?.detail === "string"
+        ? data.detail
+        : `Could not complete interview (${response.status}).`
+    );
+  }
+}
