@@ -7,6 +7,7 @@ from app.core.database import Base
 from app.core.config import settings
 import app.models
 from app.models.submissions import Submission
+from app.models.interview_question import InterviewQuestion
 
 # Get Alembic configuration
 config = context.config

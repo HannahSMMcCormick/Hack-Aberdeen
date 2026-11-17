@@ -16,11 +16,14 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
+from app.services.project_analyser import analyse_project
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.models.assessments import Assessment
 from app.models.submissions import Submission
 from app.models.user import User
+from app.models.interview_question import InterviewQuestion
+from app.services.question_generator import generate_interview_questions
 
 router = APIRouter(prefix="/submissions", tags=["Submissions"])
 
@@ -262,3 +265,233 @@ def get_my_submissions(
         }
         for submission in submissions
     ]
+
+
+@router.post("/{submission_id}/analyze")
+def analyze_submission(
+    submission_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Only candidates can analyze their projects.
+    if current_user.role != "candidate":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only candidates can analyze projects.",
+        )
+
+    # Look up the submission and enforce ownership.
+    submission = (
+        db.query(Submission)
+        .filter(
+            Submission.id == submission_id,
+            Submission.candidate_id == current_user.id,
+        )
+        .first()
+    )
+
+    if submission is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Submission not found.",
+        )
+
+    if not submission.storage_key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Submission ZIP file is missing.",
+        )
+
+    # Construct the path using only the trusted submission ID.
+    zip_path = STORAGE_DIR / f"{submission.id}.zip"
+
+    if not zip_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Submission ZIP file was not found.",
+        )
+
+    try:
+        analysis = analyse_project(zip_path)
+    except (OSError, ValueError, zipfile.BadZipFile):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not analyze the uploaded ZIP file.",
+        )
+
+    # Don't return raw source-code samples to the client.
+    return {
+        "submission_id": str(submission.id),
+        "original_filename": submission.original_filename,
+        "analysis": {
+            "total_files": analysis["total_files"],
+            "languages": analysis["languages"],
+            "frameworks": analysis["frameworks"],
+            "file_tree": analysis["file_tree"],
+        },
+    }
+
+
+@router.post("/{submission_id}/generate-questions")
+def generate_submission_questions(
+    submission_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "candidate":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only candidates can generate questions.",
+        )
+
+    submission = (
+        db.query(Submission)
+        .filter(
+            Submission.id == submission_id,
+            Submission.candidate_id == current_user.id,
+        )
+        .first()
+    )
+
+    if submission is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Submission not found.",
+        )
+
+    existing_questions = (
+        db.query(InterviewQuestion)
+        .filter(InterviewQuestion.submission_id == submission_id)
+        .order_by(InterviewQuestion.position)
+        .all()
+    )
+
+    if existing_questions:
+        return {
+            "submission_id": str(submission_id),
+            "already_generated": True,
+            "questions": [
+                {
+                    "id": str(item.id),
+                    "question": item.question,
+                    "category": item.category,
+                    "difficulty": item.difficulty,
+                    "reason": item.reason,
+                    "position": item.position,
+                }
+                for item in existing_questions
+            ],
+        }
+
+    if not submission.storage_key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Submission ZIP file is missing.",
+        )
+
+    zip_path = STORAGE_DIR / f"{submission.id}.zip"
+
+    if not zip_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Submission ZIP file was not found.",
+        )
+
+    try:
+        analysis = analyse_project(zip_path)
+        generated = generate_interview_questions(analysis)
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not analyze the project or generate valid questions.",
+        ) from exc
+
+    saved_questions = []
+
+    try:
+        for position, item in enumerate(generated, start=1):
+            question = InterviewQuestion(
+                submission_id=submission_id,
+                question=item["question"],
+                category=item["category"],
+                difficulty=item["difficulty"],
+                reason=item["reason"],
+                position=position,
+            )
+
+            db.add(question)
+            saved_questions.append(question)
+
+        db.commit()
+
+        for question in saved_questions:
+            db.refresh(question)
+
+    except Exception:
+        db.rollback()
+        raise
+
+    return {
+        "submission_id": str(submission_id),
+        "already_generated": False,
+        "questions": [
+            {
+                "id": str(item.id),
+                "question": item.question,
+                "category": item.category,
+                "difficulty": item.difficulty,
+                "reason": item.reason,
+                "position": item.position,
+            }
+            for item in saved_questions
+        ],
+    }
+
+@router.get("/{submission_id}/questions")
+def get_submission_questions(
+    submission_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "candidate":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only candidates can view their questions.",
+        )
+
+    submission = (
+        db.query(Submission)
+        .filter(
+            Submission.id == submission_id,
+            Submission.candidate_id == current_user.id,
+        )
+        .first()
+    )
+
+    if submission is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Submission not found.",
+        )
+
+    questions = (
+        db.query(InterviewQuestion)
+        .filter(InterviewQuestion.submission_id == submission_id)
+        .order_by(InterviewQuestion.position)
+        .all()
+    )
+
+    return {
+        "submission_id": str(submission_id),
+        "questions": [
+            {
+                "id": str(item.id),
+                "question": item.question,
+                "category": item.category,
+                "difficulty": item.difficulty,
+                "reason": item.reason,
+                "position": item.position,
+            }
+            for item in questions
+        ],
+    }
