@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes.auth import router as auth_router
 from app.api.routes.admin import router as admin_router
 from app.api.routes.assessments import router as assessments_router
+from app.api.routes.submissions import router as submissions_router
 
 app = FastAPI(
     title="Personify Interview",
@@ -14,6 +15,7 @@ app = FastAPI(
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(assessments_router)
+app.include_router(submissions_router)
 
 app.add_middleware(
     CORSMiddleware,

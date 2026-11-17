@@ -78,3 +78,6 @@ Thumbs.db
 *.log
 *.tmp
 *.bak
+
+# Private candidate project uploads
+backend/private_uploads/
