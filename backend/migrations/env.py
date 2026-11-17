@@ -6,7 +6,7 @@ from alembic import context
 from app.core.database import Base
 from app.core.config import settings
 import app.models
-from backend.app.models.submissions import Submission
+from app.models.submissions import Submission
 
 # Get Alembic configuration
 config = context.config

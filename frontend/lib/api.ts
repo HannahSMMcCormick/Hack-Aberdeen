@@ -152,3 +152,95 @@ export async function deleteAssessment(
     throw new Error(`Failed to delete assessment (${response.status}).`);
   }
 }
+
+
+export type CandidateAssessment = {
+  id: string;
+  title: string;
+  role: string;
+  description: string | null;
+  status: string;
+  created_at: string;
+};
+
+export type CandidateSubmission = {
+  id: string;
+  assessment_id: string;
+  original_filename: string | null;
+  status: string;
+  created_at: string;
+};
+
+export async function getCandidateAssessments(
+  token: string
+): Promise<CandidateAssessment[]> {
+  const response = await fetch(
+    `${API_URL}/submissions/assessments`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load assessments (${response.status})`
+    );
+  }
+
+  return response.json();
+}
+
+export async function getMySubmissions(
+  token: string
+): Promise<CandidateSubmission[]> {
+  const response = await fetch(`${API_URL}/submissions/mine`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load submissions (${response.status})`
+    );
+  }
+
+  return response.json();
+}
+
+export async function uploadCandidateProject(
+  token: string,
+  assessmentId: string,
+  file: File
+): Promise<CandidateSubmission> {
+  const formData = new FormData();
+  formData.append("assessment_id", assessmentId);
+  formData.append("file", file);
+
+  const response = await fetch(
+    `${API_URL}/submissions/upload`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+
+    throw new Error(
+      typeof data?.detail === "string"
+        ? data.detail
+        : `Upload failed (${response.status})`
+    );
+  }
+
+  return response.json();
+}

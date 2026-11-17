@@ -3,6 +3,7 @@ import os
 import uuid
 import zipfile
 from pathlib import Path, PurePosixPath
+from sqlalchemy.exc import IntegrityError
 
 from fastapi import (
     APIRouter,
@@ -103,6 +104,23 @@ def upload_submission(
             status_code=400,
             detail="Assessment is not published.",
         )
+        
+        
+    # Prevent candidates from submitting twice to the same assessment.
+    existing_submission = (
+        db.query(Submission)
+        .filter(
+            Submission.candidate_id == current_user.id,
+            Submission.assessment_id == assessment_id,
+        )
+        .first()
+    )
+
+    if existing_submission is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You have already submitted a project for this assessment.",
+        )
 
     original_name = Path(
         (file.filename or "").replace("\\", "/")
@@ -167,6 +185,15 @@ def upload_submission(
             "status": submission.status,
         }
 
+    except IntegrityError as exc:
+        db.rollback()
+        destination.unlink(missing_ok=True)
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You have already submitted a project for this assessment.",
+        ) from exc
+
     except Exception:
         db.rollback()
         destination.unlink(missing_ok=True)
@@ -174,3 +201,64 @@ def upload_submission(
 
     finally:
         file.file.close()
+
+
+@router.get("/assessments")
+def get_candidate_assessments(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "candidate":
+        raise HTTPException(
+            status_code=403,
+            detail="Only candidates can view available assessments.",
+        )
+
+    assessments = (
+        db.query(Assessment)
+        .filter(Assessment.status == "published")
+        .order_by(Assessment.created_at.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id": str(assessment.id),
+            "title": assessment.title,
+            "role": assessment.role,
+            "description": assessment.description,
+            "status": assessment.status,
+            "created_at": assessment.created_at,
+        }
+        for assessment in assessments
+    ]
+
+
+@router.get("/mine")
+def get_my_submissions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "candidate":
+        raise HTTPException(
+            status_code=403,
+            detail="Only candidates can view their submissions.",
+        )
+
+    submissions = (
+        db.query(Submission)
+        .filter(Submission.candidate_id == current_user.id)
+        .order_by(Submission.created_at.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id": str(submission.id),
+            "assessment_id": str(submission.assessment_id),
+            "original_filename": submission.original_filename,
+            "status": submission.status,
+            "created_at": submission.created_at,
+        }
+        for submission in submissions
+    ]

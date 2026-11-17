@@ -1,0 +1,4 @@
+id,candidate_id,assessment_id,original_filename,storage_key,status,created_at
+58902117-f9f4-48a5-95d9-358bed5ae7d3,9d38612a-0dfa-46a2-bd2a-7b20c6077ede,a3d2b581-597d-44ba-91b1-1d1f2faa6426,test-project.zip,58902117-f9f4-48a5-95d9-358bed5ae7d3.zip,pending,2026-11-17 01:56:47.785716+00:00
+88147d26-1c1e-40dd-8778-683a29ffac36,9d38612a-0dfa-46a2-bd2a-7b20c6077ede,a3d2b581-597d-44ba-91b1-1d1f2faa6426,test-project.zip,88147d26-1c1e-40dd-8778-683a29ffac36.zip,pending,2026-11-17 02:12:29.060451+00:00
+86cb13e8-814b-47da-a8ab-cc871dcf70f9,9d38612a-0dfa-46a2-bd2a-7b20c6077ede,a3d2b581-597d-44ba-91b1-1d1f2faa6426,test-project.zip,86cb13e8-814b-47da-a8ab-cc871dcf70f9.zip,pending,2026-11-17 02:12:37.722861+00:00

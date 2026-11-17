@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -12,27 +13,41 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
     setError("");
     setLoading(true);
 
     try {
+      // Authenticate with FastAPI
       const result = await login(email, password);
+
+      // Get the authenticated user's role
       const user = await getCurrentUser(result.access_token);
 
-      if (user.role !== "admin") {
-        setError("This dashboard requires an admin account.");
-        return;
+      // Store the JWT for subsequent API requests
+      sessionStorage.setItem(
+        "access_token",
+        result.access_token
+      );
+
+      // Redirect based on role
+      if (user.role === "admin") {
+        router.replace("/admin");
+      } else if (user.role === "candidate") {
+        router.replace("/candidate");
+      } else {
+        sessionStorage.removeItem("access_token");
+        throw new Error("Unsupported account role.");
       }
-
-      // Temporary development-only token storage.
-      // We'll replace this with an HttpOnly cookie session.
-      sessionStorage.setItem("access_token", result.access_token);
-
-      router.push("/admin");
-    } catch {
-      setError("Login failed. Check your email and password.");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Login failed. Check your email and password."
+      );
     } finally {
       setLoading(false);
     }
@@ -49,13 +64,17 @@ export default function LoginPage() {
         </h1>
 
         <p className="text-sm text-slate-600">
-          Admin sign in
+          Sign in to your account
         </p>
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-slate-700">
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-slate-700"
+          >
             Email
           </label>
+
           <input
             id="email"
             type="email"
@@ -68,9 +87,13 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-slate-700"
+          >
             Password
           </label>
+
           <input
             id="password"
             type="password"
@@ -83,7 +106,10 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <p role="alert" className="text-sm text-red-600">
+          <p
+            role="alert"
+            className="text-sm text-red-600"
+          >
             {error}
           </p>
         )}
@@ -91,7 +117,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-blue-600 p-3 font-medium text-white disabled:opacity-50"
+          className="w-full rounded-lg bg-blue-600 p-3 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
         >
           {loading ? "Signing in..." : "Sign in"}
         </button>

@@ -1,6 +1,7 @@
 
 import uuid
 from datetime import datetime
+from sqlalchemy import UniqueConstraint
 
 from sqlalchemy import (
     DateTime,
@@ -56,6 +57,11 @@ class Submission(Base):
     )
 
     __table_args__ = (
-        Index("ix_submissions_candidate_id", "candidate_id"),
-        Index("ix_submissions_assessment_id", "assessment_id"),
-    )
+    Index("ix_submissions_candidate_id", "candidate_id"),
+    Index("ix_submissions_assessment_id", "assessment_id"),
+    UniqueConstraint(
+        "candidate_id",
+        "assessment_id",
+        name="uq_submissions_candidate_assessment",
+    ),
+)
