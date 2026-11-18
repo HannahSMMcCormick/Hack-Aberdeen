@@ -376,7 +376,7 @@ def generate_submission_questions(
                     "question": item.question,
                     "category": item.category,
                     "difficulty": item.difficulty,
-                    "reason": item.reason,
+
                     "position": item.position,
                 }
                 for item in existing_questions
@@ -489,7 +489,7 @@ def get_submission_questions(
                 "question": item.question,
                 "category": item.category,
                 "difficulty": item.difficulty,
-                "reason": item.reason,
+              
                 "position": item.position,
             }
             for item in questions

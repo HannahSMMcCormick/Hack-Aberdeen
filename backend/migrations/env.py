@@ -8,6 +8,10 @@ from app.core.config import settings
 import app.models
 from app.models.submissions import Submission
 from app.models.interview_question import InterviewQuestion
+from app.models.interview_session import InterviewSession
+from app.models.interview_answer import InterviewAnswer
+from app.models.interview_evaluation import InterviewEvaluation
+from app.models.answer_evaluation import AnswerEvaluation
 
 # Get Alembic configuration
 config = context.config

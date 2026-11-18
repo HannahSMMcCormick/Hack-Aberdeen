@@ -35,6 +35,65 @@ SKIP_DIRECTORIES = {
     "coverage",
 }
 
+SENSITIVE_FILENAMES = {
+    ".env",
+    ".env.local",
+    ".env.development",
+    ".env.production",
+    ".env.test",
+    ".npmrc",
+    ".pypirc",
+    ".netrc",
+    "credentials.json",
+    "service-account.json",
+    "id_rsa",
+    "id_ed25519",
+    "known_hosts",
+    "authorized_keys",
+}
+
+SENSITIVE_EXTENSIONS = {
+    ".pem",
+    ".key",
+    ".p12",
+    ".pfx",
+    ".jks",
+    ".keystore",
+    ".sqlite",
+    ".db",
+}
+
+
+def is_sensitive_path(path: PurePosixPath) -> bool:
+    filename = path.name.lower()
+
+    if filename in SENSITIVE_FILENAMES:
+        return True
+
+    if filename.startswith(".env."):
+        return True
+
+    if filename.endswith((".secret", ".secrets")):
+        return True
+
+    if Path(filename).suffix.lower() in SENSITIVE_EXTENSIONS:
+        return True
+
+    if any(
+        part.lower() in {
+            ".ssh",
+            ".aws",
+            ".azure",
+            ".config/gcloud",
+            "secrets",
+            "private",
+        }
+        for part in path.parts[:-1]
+    ):
+        return True
+
+    return False
+
 MAX_READ_BYTES = 64 * 1024
 MAX_ANALYSIS_FILES = 100
 MAX_TOTAL_TEXT_BYTES = 512 * 1024
@@ -72,6 +131,7 @@ def analyse_project(zip_path: Path) -> dict:
                     part.lower() in SKIP_DIRECTORIES
                     for part in path.parts
                 )
+                or is_sensitive_path(path)
             ):
                 continue
 

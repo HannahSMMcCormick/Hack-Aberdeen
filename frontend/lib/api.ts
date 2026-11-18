@@ -364,3 +364,106 @@ export async function completeInterview(
     );
   }
 }
+
+export type AdminInterview = {
+  session_id: string;
+  submission_id: string;
+  candidate_name: string;
+  candidate_email: string;
+  assessment_title: string;
+  project_filename: string | null;
+  interview_status: string;
+  started_at: string;
+  completed_at: string | null;
+  evaluation_status: string;
+  overall_score: number | null;
+};
+
+export type AnswerEvaluation = {
+  answer_id: string;
+  question_id: string;
+  question: string;
+  answer_text: string;
+  score: number;
+  strengths: string | null;
+  weaknesses: string | null;
+  feedback: string | null;
+};
+
+export type InterviewEvaluation = {
+  evaluation_id: string;
+  session_id: string;
+  status: string;
+  overall_score: number | null;
+  summary: string | null;
+  answer_evaluations: AnswerEvaluation[];
+};
+
+async function readEvaluationResponse(
+  response: Response
+): Promise<InterviewEvaluation> {
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+
+    throw new Error(
+      typeof data?.detail === "string"
+        ? data.detail
+        : `Evaluation request failed (${response.status}).`
+    );
+  }
+
+  return response.json();
+}
+
+export async function getAdminInterviews(
+  token: string
+): Promise<AdminInterview[]> {
+  const response = await fetch(`${API_URL}/admin/interviews`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Could not load admin interviews (${response.status}).`
+    );
+  }
+
+  return response.json();
+}
+
+export async function getInterviewEvaluation(
+  token: string,
+  sessionId: string
+): Promise<InterviewEvaluation> {
+  const response = await fetch(
+    `${API_URL}/evaluations/${encodeURIComponent(sessionId)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    }
+  );
+
+  return readEvaluationResponse(response);
+}
+
+export async function generateInterviewEvaluation(
+  token: string,
+  sessionId: string
+): Promise<InterviewEvaluation> {
+  const response = await fetch(
+    `${API_URL}/evaluations/${encodeURIComponent(sessionId)}/generate`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  return readEvaluationResponse(response);
+}

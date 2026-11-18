@@ -5,6 +5,9 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.admin import router as admin_router
 from app.api.routes.assessments import router as assessments_router
 from app.api.routes.submissions import router as submissions_router
+from app.api.routes import interviews
+from app.api.routes import evaluations
+from app.api.routes import admin_interviews
 
 app = FastAPI(
     title="Personify Interview",
@@ -16,6 +19,10 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(assessments_router)
 app.include_router(submissions_router)
+app.include_router(interviews.router)
+app.include_router(interviews.router)
+app.include_router(evaluations.router)
+app.include_router(admin_interviews.router)
 
 app.add_middleware(
     CORSMiddleware,
